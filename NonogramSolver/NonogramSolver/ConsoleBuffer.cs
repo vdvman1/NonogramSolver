@@ -55,20 +55,15 @@ namespace NonogramSolver
             IsScreen = false;
             if (!Console.IsOutputRedirected)
             {
-                // Check if console already big enough to fit buffer
-                if (Console.BufferWidth >= width && Console.BufferHeight >= height)
+                // Check if console already big enough to fit buffer or if the console buffer can be set to the appropriate size
+                if((Console.BufferWidth >= width && Console.BufferHeight >= height) || TrySetBufferSize(width, height))
                 {
                     IsScreen = true;
-                }
-                // Otherwise attempt to increase console size
-                else if(TrySetBufferSize(width, height))
-                {
-                    Console.SetWindowSize(width, height);
-                    IsScreen = true;
-                }
+                    if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    {
+                        Console.SetWindowSize(Math.Max(width, Console.WindowWidth), Math.Max(height, Console.WindowHeight));
+                    }
 
-                if(IsScreen)
-                {
                     Console.Clear();
                 }
                 else // Has console screen but buffer does not fit
@@ -170,7 +165,7 @@ namespace NonogramSolver
                 {
                     if (TrySetBufferSize(Width, Height + 1))
                     {
-                        Console.SetWindowSize(Width, Height + 1);
+                        Console.WindowHeight = Height + 1;
                         Console.SetCursorPosition(0, Height);
                     }
                     else
@@ -180,6 +175,14 @@ namespace NonogramSolver
                 }
                 else
                 {
+                    if(Height >= Console.WindowHeight && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    {
+                        try
+                        {
+                            Console.WindowHeight = Height + 1;
+                        }
+                        catch (Exception) {}
+                    }
                     Console.SetCursorPosition(0, Height);
                 }
             }
