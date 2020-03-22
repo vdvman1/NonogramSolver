@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29503.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NonogramSolver", "NonogramSolver\NonogramSolver.csproj", "{8AF74874-48DA-4BE7-AB4E-BD43C646BB84}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8AF74874-48DA-4BE7-AB4E-BD43C646BB84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8AF74874-48DA-4BE7-AB4E-BD43C646BB84}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8AF74874-48DA-4BE7-AB4E-BD43C646BB84}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8AF74874-48DA-4BE7-AB4E-BD43C646BB84}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E8BD8177-B9BA-4956-807A-217008168BC1}
+	EndGlobalSection
+EndGlobal
