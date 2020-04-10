@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 using System.Timers;
 
 namespace NonogramSolver
@@ -10,7 +11,9 @@ namespace NonogramSolver
     /// Wraps the console to allow writing at arbitrary positions in the console, with a fallback when this is not possible
     /// </summary>
     /// <remarks>
-    /// This class does not handle surrogate pairs correctly
+    /// Surrogate pairs are not supported.
+    /// 
+    /// Thread safety is not guaranteed.
     /// </remarks>
     class ConsoleBuffer : IDisposable
     {
@@ -37,6 +40,22 @@ namespace NonogramSolver
         /// The Height of the buffer, in number of characters
         /// </value>
         public int Height { get; }
+
+        /// <summary>
+        /// Delay between each character drawn on the screen in milliseconds
+        /// </summary>
+        /// <value>
+        /// Delay between each character drawn on the screen in milliseconds.
+        /// Always 0 if <see cref="IsScreen"/> is <c>false</c>
+        /// </value>
+        public int CharacterDelay
+        {
+            get => characterDelay;
+            set => characterDelay = IsScreen ? value : 0;
+        }
+        private int characterDelay = 0;
+
+        private readonly FastDelay delay = new FastDelay();
 
         /// <summary>
         /// Constructs a new console buffer with the given <paramref name="width"/> and <paramref name="height"/>
@@ -82,18 +101,15 @@ namespace NonogramSolver
         }
 
         /// <summary>
-        /// Gets or sets the character in the buffer at the position specified by <paramref name="x"/> and <paramref name="y"/>
+        /// Gets the character in the buffer at the position specified by <paramref name="x"/> and <paramref name="y"/>
         /// </summary>
-        /// <exception cref="InvalidOperationException">The buffer has already been closed when attempting to set, not checked when getting</exception>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="x"/> or <paramref name="y"/> does not fit inside the buffer size</exception>
         /// <param name="x">Horizontal position of the character</param>
         /// <param name="y">Vertical position of the character</param>
         /// <returns>The character at the specified position within the buffer</returns>
-        /// <seealso cref="WriteAt(int, int, char)"/>
         public char this[int x, int y]
         {
             get => buffer[y * Width + x];
-            set => WriteAt(x, y, value);
         }
 
         /// <summary>
@@ -104,10 +120,11 @@ namespace NonogramSolver
         /// <param name="x">Horizontal position the character should be displayed</param>
         /// <param name="y">Vertical position the character should be displayed</param>
         /// <param name="c">Character to display</param>
-        public void WriteAt(int x, int y, char c)
+        /// <returns>Task to wait on before writing more characters</returns>
+        public Task WriteAt(int x, int y, char c)
         {
             CheckValid(x, y);
-            UncheckedWriteAt(x, y, c);
+            return UncheckedWriteAt(x, y, c);
         }
 
         private void CheckValid(int x, int y)
@@ -118,7 +135,7 @@ namespace NonogramSolver
             if (y < 0 || y >= Height) throw new ArgumentOutOfRangeException(nameof(y));
         }
 
-        private void UncheckedWriteAt(int x, int y, char c)
+        private Task UncheckedWriteAt(int x, int y, char c)
         {
             buffer[y * Width + x] = c;
             if (IsScreen)
@@ -126,6 +143,7 @@ namespace NonogramSolver
                 Console.SetCursorPosition(x, y);
                 Console.Write(c);
             }
+            return delay.Delay(CharacterDelay);
         }
 
         /// <summary>
@@ -141,12 +159,13 @@ namespace NonogramSolver
         /// <param name="x">Horizontal position the string should start at</param>
         /// <param name="y">Vertical position the string should start at</param>
         /// <param name="s">String to display</param>
-        public void WriteAt(int x, int y, string s)
+        /// <returns>Task to wait on before writing more characters</returns>
+        public async Task WriteAt(int x, int y, string s)
         {
             CheckValid(x, y);
             foreach (char c in s)
             {
-                UncheckedWriteAt(x, y, c);
+                await UncheckedWriteAt(x, y, c);
                 x++;
                 if(x >= Width)
                 {
@@ -173,7 +192,8 @@ namespace NonogramSolver
         /// <param name="endX">Horizontal position of the end of the line</param>
         /// <param name="shortStart">Whether the start of the line should take only the right half of the character width or the entire width</param>
         /// <param name="shortEnd">Whether the end of the line should take only the left half of the character width or the entire width</param>
-        public void DrawHorizontalLine(int startX, int y, int endX, bool shortStart = false, bool shortEnd = false)
+        /// <returns>Task to wait on before writing more characters</returns>
+        public async Task DrawHorizontalLine(int startX, int y, int endX, bool shortStart = false, bool shortEnd = false)
         {
             if (startX == endX && shortStart && shortEnd) return; // Empty line
 
@@ -207,28 +227,28 @@ namespace NonogramSolver
                     case '╶':
                         break;
                     case '│':
-                        UncheckedWriteAt(startX, y, '├');
+                        await UncheckedWriteAt(startX, y, '├');
                         break;
                     case '┐':
-                        UncheckedWriteAt(startX, y, '┬');
+                        await UncheckedWriteAt(startX, y, '┬');
                         break;
                     case '┘':
-                        UncheckedWriteAt(startX, y, '┴');
+                        await UncheckedWriteAt(startX, y, '┴');
                         break;
                     case '┤':
-                        UncheckedWriteAt(startX, y, '┼');
+                        await UncheckedWriteAt(startX, y, '┼');
                         break;
                     case '╴':
-                        UncheckedWriteAt(startX, y, '─');
+                        await UncheckedWriteAt(startX, y, '─');
                         break;
                     case '╵':
-                        UncheckedWriteAt(startX, y, '└');
+                        await UncheckedWriteAt(startX, y, '└');
                         break;
                     case '╷':
-                        UncheckedWriteAt(startX, y, '┌');
+                        await UncheckedWriteAt(startX, y, '┌');
                         break;
                     default:
-                        UncheckedWriteAt(startX, y, '╶');
+                        await UncheckedWriteAt(startX, y, '╶');
                         break;
                 }
                 startX++;
@@ -251,26 +271,26 @@ namespace NonogramSolver
                     case '│':
                     case '├':
                     case '┤':
-                        UncheckedWriteAt(x, y, '┼');
+                        await UncheckedWriteAt(x, y, '┼');
                         break;
                     case '┌':
                     case '┐':
-                        UncheckedWriteAt(x, y, '┬');
+                        await UncheckedWriteAt(x, y, '┬');
                         break;
                     case '└':
                     case '┘':
-                        UncheckedWriteAt(x, y, '┴');
+                        await UncheckedWriteAt(x, y, '┴');
                         break;
                     case '╵':
-                        UncheckedWriteAt(x, y, '┴');
+                        await UncheckedWriteAt(x, y, '┴');
                         break;
                     case '╷':
-                        UncheckedWriteAt(x, y, '┬');
+                        await UncheckedWriteAt(x, y, '┬');
                         break;
                     case '╴':
                     case '╶':
                     default:
-                        UncheckedWriteAt(x, y, '─');
+                        await UncheckedWriteAt(x, y, '─');
                         break;
                 }
             }
@@ -290,28 +310,28 @@ namespace NonogramSolver
                     case '╴':
                         break;
                     case '│':
-                        UncheckedWriteAt(x, y, '┤');
+                        await UncheckedWriteAt(x, y, '┤');
                         break;
                     case '┌':
-                        UncheckedWriteAt(x, y, '┬');
+                        await UncheckedWriteAt(x, y, '┬');
                         break;
                     case '└':
-                        UncheckedWriteAt(x, y, '┴');
+                        await UncheckedWriteAt(x, y, '┴');
                         break;
                     case '├':
-                        UncheckedWriteAt(x, y, '┼');
+                        await UncheckedWriteAt(x, y, '┼');
                         break;
                     case '╵':
-                        UncheckedWriteAt(x, y, '┘');
+                        await UncheckedWriteAt(x, y, '┘');
                         break;
                     case '╶':
-                        UncheckedWriteAt(x, y, '─');
+                        await UncheckedWriteAt(x, y, '─');
                         break;
                     case '╷':
-                        UncheckedWriteAt(x, y, '┐');
+                        await UncheckedWriteAt(x, y, '┐');
                         break;
                     default:
-                        UncheckedWriteAt(x, y, '╴');
+                        await UncheckedWriteAt(x, y, '╴');
                         break;
                 }
             }
@@ -332,7 +352,8 @@ namespace NonogramSolver
         /// <param name="endY">Vertical position of the end of the line</param>
         /// <param name="shortStart">Whether the start of the line should take only the bottom half of the character height or the entire height</param>
         /// <param name="shortEnd">Whether the end of the line should take only the top half of the character height or the entire height</param>
-        public void DrawVerticalLine(int x, int startY, int endY, bool shortStart = false, bool shortEnd = false)
+        /// <returns>Task to wait on before writing more characters</returns>
+        public async Task DrawVerticalLine(int x, int startY, int endY, bool shortStart = false, bool shortEnd = false)
         {
             if (startY == endY && shortStart && shortEnd) return; // Empty line
 
@@ -357,7 +378,7 @@ namespace NonogramSolver
                 switch (this[x, startY])
                 {
                     case '─':
-                        UncheckedWriteAt(x, startY, '┬');
+                        await UncheckedWriteAt(x, startY, '┬');
                         break;
                     case '│':
                     case '┌':
@@ -369,22 +390,22 @@ namespace NonogramSolver
                     case '╷':
                         break;
                     case '└':
-                        UncheckedWriteAt(x, startY, '├');
+                        await UncheckedWriteAt(x, startY, '├');
                         break;
                     case '┘':
-                        UncheckedWriteAt(x, startY, '┤');
+                        await UncheckedWriteAt(x, startY, '┤');
                         break;
                     case '┴':
-                        UncheckedWriteAt(x, startY, '┼');
+                        await UncheckedWriteAt(x, startY, '┼');
                         break;
                     case '╴':
-                        UncheckedWriteAt(x, startY, '┐');
+                        await UncheckedWriteAt(x, startY, '┐');
                         break;
                     case '╵':
-                        UncheckedWriteAt(x, startY, '│');
+                        await UncheckedWriteAt(x, startY, '│');
                         break;
                     case '╶':
-                        UncheckedWriteAt(x, startY, '┌');
+                        await UncheckedWriteAt(x, startY, '┌');
                         break;
                 }
                 startY++;
@@ -402,7 +423,7 @@ namespace NonogramSolver
                     case '─':
                     case '┬':
                     case '┴':
-                        UncheckedWriteAt(x, y, '┼');
+                        await UncheckedWriteAt(x, y, '┼');
                         break;
                     case '│':
                     case '├':
@@ -412,17 +433,17 @@ namespace NonogramSolver
                     case '┌':
                     case '└':
                     case '╶':
-                        UncheckedWriteAt(x, y, '├');
+                        await UncheckedWriteAt(x, y, '├');
                         break;
                     case '┐':
                     case '┘':
                     case '╴':
-                        UncheckedWriteAt(x, y, '┤');
+                        await UncheckedWriteAt(x, y, '┤');
                         break;
                     case '╵':
                     case '╷':
                     default:
-                        UncheckedWriteAt(x, y, '│');
+                        await UncheckedWriteAt(x, y, '│');
                         break;
                 }
             }
@@ -433,7 +454,7 @@ namespace NonogramSolver
                 switch (this[x, y])
                 {
                     case '─':
-                        UncheckedWriteAt(x, y, '┴');
+                        await UncheckedWriteAt(x, y, '┴');
                         break;
                     case '│':
                     case '└':
@@ -445,25 +466,25 @@ namespace NonogramSolver
                     case '╵':
                         break;
                     case '┌':
-                        UncheckedWriteAt(x, y, '├');
+                        await UncheckedWriteAt(x, y, '├');
                         break;
                     case '┐':
-                        UncheckedWriteAt(x, y, '┤');
+                        await UncheckedWriteAt(x, y, '┤');
                         break;
                     case '┬':
-                        UncheckedWriteAt(x, y, '┼');
+                        await UncheckedWriteAt(x, y, '┼');
                         break;
                     case '╴':
-                        UncheckedWriteAt(x, y, '┘');
+                        await UncheckedWriteAt(x, y, '┘');
                         break;
                     case '╶':
-                        UncheckedWriteAt(x, y, '└');
+                        await UncheckedWriteAt(x, y, '└');
                         break;
                     case '╷':
-                        UncheckedWriteAt(x, y, '│');
+                        await UncheckedWriteAt(x, y, '│');
                         break;
                     default:
-                        UncheckedWriteAt(x, y, '╵');
+                        await UncheckedWriteAt(x, y, '╵');
                         break;
                 }
             }
@@ -479,7 +500,8 @@ namespace NonogramSolver
         /// 
         /// If <see cref="IsScreen"/> is false the current contents of the buffer will be immediately printed without disposing the buffer
         /// </remarks>
-        public void Snapshot()
+        /// <returns>Task to wait on before writing more characters</returns>
+        public async Task Snapshot()
         {
             if (disposed) throw new InvalidOperationException("Console buffer has been closed");
 
@@ -518,6 +540,7 @@ namespace NonogramSolver
                 for (int i = 0, x = 0; i < buffer.Length; i++)
                 {
                     Console.Write(buffer[i]);
+                    await delay.Delay(CharacterDelay);
                     x++;
                     if (x >= Width)
                     {
@@ -542,7 +565,7 @@ namespace NonogramSolver
                 try
                 {
                     // Attempt to ensure that the final value of the buffer is printed
-                    Snapshot();
+                    Snapshot().Wait();
                 }
                 catch (Exception) { }
 

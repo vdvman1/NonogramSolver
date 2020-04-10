@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace NonogramSolver
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             // TODO: load from args or interactive console menu
             int[][] columns = new[]
@@ -44,9 +45,11 @@ namespace NonogramSolver
                 new []{10},
                 new []{6}
             };
+            int gridCharacterDelay = 1;
 
             using (var nonogram = new Nonogram(rows, columns))
             {
+                await nonogram.Draw(gridCharacterDelay);
             }
             Console.ReadKey();
         }
