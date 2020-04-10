@@ -30,11 +30,7 @@ namespace NonogramSolver
             ConsoleBuffer = new ConsoleBuffer(totalWidth, totalHeight);
 
             // Print columns
-            for (int i = 0; i < maxColumn; i++)
-            {
-                ConsoleBuffer[maxRow, i] = '│';
-            }
-            ConsoleBuffer[maxRow, maxColumn] = '┼';
+            ConsoleBuffer.DrawVerticalLine(maxRow, 0, totalHeight - 1, shortEnd: true);
             for (int i = 0; i < columnTitles.Count; i++)
             {
                 int offsetY = maxColumn - columnTitles[i].Count;
@@ -43,44 +39,18 @@ namespace NonogramSolver
                 {
                     ConsoleBuffer.WriteAt(offsetX, j + offsetY, columnTitles[i][j]);
                 }
-                ConsoleBuffer[offsetX, maxColumn] = '─';
-
                 offsetX++;
-                for (int j = 0; j < maxColumn; j++)
-                {
-                    ConsoleBuffer[offsetX, j] = '│';
-                }
-                char cross = i == columnTitles.Count - 1 ? '┤' : '┼';
-                for (int j = maxColumn; j < totalHeight - 1; j++)
-                {
-                    ConsoleBuffer[offsetX, j] = (j - maxColumn) % (cellSize + 1 /* bottom border */) == 0 ? cross : '│';
-                }
-                ConsoleBuffer[offsetX, totalHeight - 1] = i == columnTitles.Count - 1 ? '┘' : '┴';
+                ConsoleBuffer.DrawVerticalLine(offsetX, 0, totalHeight - 1, shortEnd: true);
             }
 
             // Print rows
-            for (int i = 0; i < maxRow; i++)
-            {
-                ConsoleBuffer[i, maxColumn] = '─';
-            }
+            ConsoleBuffer.DrawHorizontalLine(0, maxColumn, totalWidth - 1, shortEnd: true);
             for (int i = 0; i < rowTitles.Count; i++)
             {
                 int offsetY = maxColumn + 1 /* top border */ + i * (cellSize + 1 /* bottom border */);
-                ConsoleBuffer.WriteAt(maxRow - rowTitles[i].Length, offsetY, rowTitles[i] + '│');
-
+                ConsoleBuffer.WriteAt(maxRow - rowTitles[i].Length, offsetY, rowTitles[i]);
                 offsetY++;
-                for (int j = 0; j < maxRow; j++)
-                {
-                    ConsoleBuffer[j, offsetY] = '─';
-                }
-                ConsoleBuffer[maxRow, offsetY] = i == rowTitles.Count - 1 ? '┴' : '┼';
-                for (int j = maxRow + 1; j < totalWidth; j++)
-                {
-                    if ((j - maxRow) % (cellSize + 1 /* bottom border */) != 0)
-                    {
-                        ConsoleBuffer[j, offsetY] = '─';
-                    }
-                }
+                ConsoleBuffer.DrawHorizontalLine(0, offsetY, totalWidth - 1, shortEnd: true);
             }
         }
 

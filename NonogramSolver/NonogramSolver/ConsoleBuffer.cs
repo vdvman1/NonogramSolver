@@ -51,6 +51,8 @@ namespace NonogramSolver
             buffer = new char[height * width];
             Array.Fill(buffer, ' ');
 
+            Console.OutputEncoding = Encoding.UTF8;
+
             // Attempt to fit buffer to console
             IsScreen = false;
             if (!Console.IsOutputRedirected)
@@ -104,11 +106,20 @@ namespace NonogramSolver
         /// <param name="c">Character to display</param>
         public void WriteAt(int x, int y, char c)
         {
+            CheckValid(x, y);
+            UncheckedWriteAt(x, y, c);
+        }
+
+        private void CheckValid(int x, int y)
+        {
             if (disposed) throw new InvalidOperationException("Console buffer has been closed");
 
             if (x < 0 || x >= Width) throw new ArgumentOutOfRangeException(nameof(x));
             if (y < 0 || y >= Height) throw new ArgumentOutOfRangeException(nameof(y));
+        }
 
+        private void UncheckedWriteAt(int x, int y, char c)
+        {
             buffer[y * Width + x] = c;
             if (IsScreen)
             {
@@ -116,10 +127,12 @@ namespace NonogramSolver
                 Console.Write(c);
             }
         }
+
         /// <summary>
         /// Write the string <paramref name="s"/> starting from the position specified by <paramref name="x"/> and <paramref name="y"/>
         /// </summary>
         /// <exception cref="InvalidOperationException">The buffer has already been closed</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="x"/> or <paramref name="y"/> does not fit inside the buffer size</exception>
         /// <remarks>
         /// The string will be printed horizontally, replacing any existing characters.
         /// The string will automatically wrap onto a new line if it does not fit into the buffer. If the string reaches the end of the buffer the remainder will be silently ignored and not printed
@@ -130,9 +143,10 @@ namespace NonogramSolver
         /// <param name="s">String to display</param>
         public void WriteAt(int x, int y, string s)
         {
+            CheckValid(x, y);
             foreach (char c in s)
             {
-                WriteAt(x, y, c);
+                UncheckedWriteAt(x, y, c);
                 x++;
                 if(x >= Width)
                 {
@@ -140,6 +154,317 @@ namespace NonogramSolver
                     if (y >= Height) return;
 
                     x = 0;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Draws a horizontal line going from (<paramref name="startX"/>, <paramref name="y"/>) to (<paramref name="endX"/>, <paramref name="y"/>)
+        /// </summary>
+        /// <remarks>
+        /// Draws a horizontal line between the start and end coordinates, combining with any existing lines in the buffer.
+        /// If <paramref name="endX"/> is less than <paramref name="startX"/> they will be swapped
+        /// If <paramref name="startX"/> equals <paramref name="endX"/> and both <paramref name="shortStart"/> and <paramref name="shortEnd"/> are true then no line will be drawn and bounds checking will not be performed
+        /// </remarks>
+        /// <exception cref="InvalidOperationException">The buffer has already been closed</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="startX"/>, <paramref name="endX"/>, or <paramref name="y"/> does not fit inside the buffer size</exception>
+        /// <param name="startX">Horizontal position of the start of the line</param>
+        /// <param name="y">Vertical position of the line</param>
+        /// <param name="endX">Horizontal position of the end of the line</param>
+        /// <param name="shortStart">Whether the start of the line should take only the right half of the character width or the entire width</param>
+        /// <param name="shortEnd">Whether the end of the line should take only the left half of the character width or the entire width</param>
+        public void DrawHorizontalLine(int startX, int y, int endX, bool shortStart = false, bool shortEnd = false)
+        {
+            if (startX == endX && shortStart && shortEnd) return; // Empty line
+
+            if (disposed) throw new InvalidOperationException("Console buffer has been closed");
+
+            if (y < 0 || y >= Height) throw new ArgumentOutOfRangeException(nameof(y));
+
+            if (startX < 0 || startX >= Width) throw new ArgumentOutOfRangeException(nameof(startX));
+
+            if (startX != endX)
+            {
+                if (endX < 0 || endX >= Width) throw new ArgumentOutOfRangeException(nameof(endX));
+
+                if (endX < startX)
+                {
+                    (startX, endX) = (endX, startX);
+                }
+            }
+
+            if (shortStart)
+            {
+                switch (this[startX, y])
+                {
+                    case '─':
+                    case '┌':
+                    case '└':
+                    case '├':
+                    case '┬':
+                    case '┴':
+                    case '┼':
+                    case '╶':
+                        break;
+                    case '│':
+                        UncheckedWriteAt(startX, y, '├');
+                        break;
+                    case '┐':
+                        UncheckedWriteAt(startX, y, '┬');
+                        break;
+                    case '┘':
+                        UncheckedWriteAt(startX, y, '┴');
+                        break;
+                    case '┤':
+                        UncheckedWriteAt(startX, y, '┼');
+                        break;
+                    case '╴':
+                        UncheckedWriteAt(startX, y, '─');
+                        break;
+                    case '╵':
+                        UncheckedWriteAt(startX, y, '└');
+                        break;
+                    case '╷':
+                        UncheckedWriteAt(startX, y, '┌');
+                        break;
+                    default:
+                        UncheckedWriteAt(startX, y, '╶');
+                        break;
+                }
+                startX++;
+            }
+
+            if(shortEnd)
+            {
+                endX--;
+            }
+
+            for (int x = startX; x <= endX; x++)
+            {
+                switch (this[x, y])
+                {
+                    case '─':
+                    case '┬':
+                    case '┴':
+                    case '┼':
+                        break;
+                    case '│':
+                    case '├':
+                    case '┤':
+                        UncheckedWriteAt(x, y, '┼');
+                        break;
+                    case '┌':
+                    case '┐':
+                        UncheckedWriteAt(x, y, '┬');
+                        break;
+                    case '└':
+                    case '┘':
+                        UncheckedWriteAt(x, y, '┴');
+                        break;
+                    case '╵':
+                        UncheckedWriteAt(x, y, '┴');
+                        break;
+                    case '╷':
+                        UncheckedWriteAt(x, y, '┬');
+                        break;
+                    case '╴':
+                    case '╶':
+                    default:
+                        UncheckedWriteAt(x, y, '─');
+                        break;
+                }
+            }
+
+            if(shortEnd)
+            {
+                int x = endX + 1;
+                switch (this[x, y])
+                {
+                    case '─':
+                    case '┐':
+                    case '┘':
+                    case '┤':
+                    case '┬':
+                    case '┴':
+                    case '┼':
+                    case '╴':
+                        break;
+                    case '│':
+                        UncheckedWriteAt(x, y, '┤');
+                        break;
+                    case '┌':
+                        UncheckedWriteAt(x, y, '┬');
+                        break;
+                    case '└':
+                        UncheckedWriteAt(x, y, '┴');
+                        break;
+                    case '├':
+                        UncheckedWriteAt(x, y, '┼');
+                        break;
+                    case '╵':
+                        UncheckedWriteAt(x, y, '┘');
+                        break;
+                    case '╶':
+                        UncheckedWriteAt(x, y, '─');
+                        break;
+                    case '╷':
+                        UncheckedWriteAt(x, y, '┐');
+                        break;
+                    default:
+                        UncheckedWriteAt(x, y, '╴');
+                        break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Draws a vertical line going from (<paramref name="x"/>, <paramref name="startY"/>) to (<paramref name="x"/>, <paramref name="endY"/>)
+        /// </summary>
+        /// <remarks>
+        /// Draws a vertical line between the start and end coordinates, combining with any existing lines in the buffer.
+        /// If <paramref name="endY"/> is less than <paramref name="startY"/> they will be swapped
+        /// If <paramref name="startY"/> equals <paramref name="endY"/> and both <paramref name="shortStart"/> and <paramref name="shortEnd"/> are true then no line will be drawn and bounds checking will not be performed
+        /// </remarks>
+        /// <exception cref="InvalidOperationException">The buffer has already been closed</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="startY"/>, <paramref name="endY"/>, or <paramref name="x"/> does not fit inside the buffer size</exception>
+        /// <param name="startY">Vertical position of the start of the line</param>
+        /// <param name="x">Horizontal position of the line</param>
+        /// <param name="endY">Vertical position of the end of the line</param>
+        /// <param name="shortStart">Whether the start of the line should take only the bottom half of the character height or the entire height</param>
+        /// <param name="shortEnd">Whether the end of the line should take only the top half of the character height or the entire height</param>
+        public void DrawVerticalLine(int x, int startY, int endY, bool shortStart = false, bool shortEnd = false)
+        {
+            if (startY == endY && shortStart && shortEnd) return; // Empty line
+
+            if (disposed) throw new InvalidOperationException("Console buffer has been closed");
+
+            if (x < 0 || x >= Width) throw new ArgumentOutOfRangeException(nameof(x));
+
+            if (startY < 0 || startY >= Height) throw new ArgumentOutOfRangeException(nameof(startY));
+
+            if (startY != endY)
+            {
+                if (endY < 0 || endY >= Height) throw new ArgumentOutOfRangeException(nameof(endY));
+
+                if (endY < startY)
+                {
+                    (startY, endY) = (endY, startY);
+                }
+            }
+
+            if (shortStart)
+            {
+                switch (this[x, startY])
+                {
+                    case '─':
+                        UncheckedWriteAt(x, startY, '┬');
+                        break;
+                    case '│':
+                    case '┌':
+                    case '┐':
+                    case '├':
+                    case '┤':
+                    case '┬':
+                    case '┼':
+                    case '╷':
+                        break;
+                    case '└':
+                        UncheckedWriteAt(x, startY, '├');
+                        break;
+                    case '┘':
+                        UncheckedWriteAt(x, startY, '┤');
+                        break;
+                    case '┴':
+                        UncheckedWriteAt(x, startY, '┼');
+                        break;
+                    case '╴':
+                        UncheckedWriteAt(x, startY, '┐');
+                        break;
+                    case '╵':
+                        UncheckedWriteAt(x, startY, '│');
+                        break;
+                    case '╶':
+                        UncheckedWriteAt(x, startY, '┌');
+                        break;
+                }
+                startY++;
+            }
+
+            if (shortEnd)
+            {
+                endY--;
+            }
+
+            for (int y = startY; y <= endY; y++)
+            {
+                switch (this[x, y])
+                {
+                    case '─':
+                    case '┬':
+                    case '┴':
+                        UncheckedWriteAt(x, y, '┼');
+                        break;
+                    case '│':
+                    case '├':
+                    case '┤':
+                    case '┼':
+                        break;
+                    case '┌':
+                    case '└':
+                    case '╶':
+                        UncheckedWriteAt(x, y, '├');
+                        break;
+                    case '┐':
+                    case '┘':
+                    case '╴':
+                        UncheckedWriteAt(x, y, '┤');
+                        break;
+                    case '╵':
+                    case '╷':
+                    default:
+                        UncheckedWriteAt(x, y, '│');
+                        break;
+                }
+            }
+
+            if (shortEnd)
+            {
+                int y = endY + 1;
+                switch (this[x, y])
+                {
+                    case '─':
+                        UncheckedWriteAt(x, y, '┴');
+                        break;
+                    case '│':
+                    case '└':
+                    case '┘':
+                    case '├':
+                    case '┤':
+                    case '┴':
+                    case '┼':
+                    case '╵':
+                        break;
+                    case '┌':
+                        UncheckedWriteAt(x, y, '├');
+                        break;
+                    case '┐':
+                        UncheckedWriteAt(x, y, '┤');
+                        break;
+                    case '┬':
+                        UncheckedWriteAt(x, y, '┼');
+                        break;
+                    case '╴':
+                        UncheckedWriteAt(x, y, '┘');
+                        break;
+                    case '╶':
+                        UncheckedWriteAt(x, y, '└');
+                        break;
+                    case '╷':
+                        UncheckedWriteAt(x, y, '│');
+                        break;
+                    default:
+                        UncheckedWriteAt(x, y, '╵');
+                        break;
                 }
             }
         }
