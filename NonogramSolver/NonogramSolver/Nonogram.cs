@@ -54,7 +54,7 @@ namespace NonogramSolver
                 {
                     await ConsoleBuffer.WriteAt(offsetX, j + offsetY, columnTitles[i][j], waiter: waiter);
                 }
-                offsetX++;
+                offsetX += cellSize;
                 await ConsoleBuffer.DrawVerticalLine(offsetX, 0, totalHeight - 1, shortEnd: true, waiter: waiter);
             }
 
@@ -64,7 +64,7 @@ namespace NonogramSolver
             {
                 int offsetY = maxColumn + 1 /* top border */ + i * (cellSize + 1 /* bottom border */);
                 await ConsoleBuffer.WriteAt(maxRow - rowTitles[i].Length, offsetY, rowTitles[i], waiter: waiter);
-                offsetY++;
+                offsetY += cellSize;
                 await ConsoleBuffer.DrawHorizontalLine(0, offsetY, totalWidth - 1, shortEnd: true, waiter: waiter);
             }
         }
