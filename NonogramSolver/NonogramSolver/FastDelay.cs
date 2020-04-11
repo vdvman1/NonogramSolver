@@ -13,7 +13,7 @@ namespace NonogramSolver
     /// This class does not necessarily give perfectly consistent delays on every call, as it is limited by the underlying Task.Delay precision.
     /// Instead subsequent calls to the methods in this class will take into account the amount truly waited for in previous calls and will return immediately if enough elapsed time has already occured
     /// </remarks>
-    public class FastDelay : IWaiter
+    public class FastDelay : IAsyncWaiter
     {
         private readonly Stopwatch stopwatch = new Stopwatch();
         private TimeSpan extraTime = TimeSpan.Zero;
@@ -29,7 +29,7 @@ namespace NonogramSolver
         /// Waits for <see cref="Delay"/> milliseconds to pass, accounting for previous calls that ran for too long
         /// </summary>
         /// <returns>Delayed task</returns>
-        public async Task Wait()
+        public async Task WaitAsync()
         {
             // Create a local copy of the delay so that changes to Delay do not affect the current call
             var currentDelay = delay;

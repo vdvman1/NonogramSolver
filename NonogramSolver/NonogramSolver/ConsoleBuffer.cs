@@ -105,7 +105,7 @@ namespace NonogramSolver
         /// <param name="y">Vertical position the character should be displayed</param>
         /// <param name="c">Character to display</param>
         /// <returns>Task to wait on before writing more characters</returns>
-        public Task WriteAt(int x, int y, char c, IWaiter waiter = null)
+        public Task WriteAt(int x, int y, char c, IAsyncWaiter waiter = null)
         {
             CheckValid(x, y);
             return UncheckedWriteAt(x, y, c, waiter);
@@ -119,7 +119,7 @@ namespace NonogramSolver
             if (y < 0 || y >= Height) throw new ArgumentOutOfRangeException(nameof(y));
         }
 
-        private Task UncheckedWriteAt(int x, int y, char c, IWaiter waiter)
+        private Task UncheckedWriteAt(int x, int y, char c, IAsyncWaiter waiter)
         {
             buffer[y * Width + x] = c;
             if (IsScreen)
@@ -127,7 +127,7 @@ namespace NonogramSolver
                 Console.SetCursorPosition(x, y);
                 Console.Write(c);
             }
-            return !IsScreen || waiter == null ? Task.CompletedTask : waiter.Wait();
+            return !IsScreen || waiter == null ? Task.CompletedTask : waiter.WaitAsync();
         }
 
         /// <summary>
@@ -144,7 +144,7 @@ namespace NonogramSolver
         /// <param name="y">Vertical position the string should start at</param>
         /// <param name="s">String to display</param>
         /// <returns>Task to wait on before writing more characters</returns>
-        public async Task WriteAt(int x, int y, string s, IWaiter waiter = null)
+        public async Task WriteAt(int x, int y, string s, IAsyncWaiter waiter = null)
         {
             CheckValid(x, y);
             foreach (char c in s)
@@ -177,7 +177,7 @@ namespace NonogramSolver
         /// <param name="shortStart">Whether the start of the line should take only the right half of the character width or the entire width</param>
         /// <param name="shortEnd">Whether the end of the line should take only the left half of the character width or the entire width</param>
         /// <returns>Task to wait on before writing more characters</returns>
-        public async Task DrawHorizontalLine(int startX, int y, int endX, bool shortStart = false, bool shortEnd = false, IWaiter waiter = null)
+        public async Task DrawHorizontalLine(int startX, int y, int endX, bool shortStart = false, bool shortEnd = false, IAsyncWaiter waiter = null)
         {
             if (startX == endX && shortStart && shortEnd) return; // Empty line
 
@@ -337,7 +337,7 @@ namespace NonogramSolver
         /// <param name="shortStart">Whether the start of the line should take only the bottom half of the character height or the entire height</param>
         /// <param name="shortEnd">Whether the end of the line should take only the top half of the character height or the entire height</param>
         /// <returns>Task to wait on before writing more characters</returns>
-        public async Task DrawVerticalLine(int x, int startY, int endY, bool shortStart = false, bool shortEnd = false, IWaiter waiter = null)
+        public async Task DrawVerticalLine(int x, int startY, int endY, bool shortStart = false, bool shortEnd = false, IAsyncWaiter waiter = null)
         {
             if (startY == endY && shortStart && shortEnd) return; // Empty line
 

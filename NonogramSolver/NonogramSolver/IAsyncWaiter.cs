@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 namespace NonogramSolver
 {
     /// <summary>
-    /// Represents a type that can be used to wait for an event repeatedly, may be stateful
+    /// Represents a type that can be used to asynchronously wait for an event repeatedly, may be stateful
     /// </summary>
-    public interface IWaiter
+    public interface IAsyncWaiter
     {
         /// <summary>
-        /// Wait for the next event
+        /// Asynchronously wait for the next event
         /// </summary>
         /// <returns>Task that will be completed when the next event occurs</returns>
-        Task Wait();
+        Task WaitAsync();
     }
 }
