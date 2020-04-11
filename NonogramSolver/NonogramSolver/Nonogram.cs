@@ -39,30 +39,33 @@ namespace NonogramSolver
 
         public async Task Draw(int characterDelay)
         {
-            ConsoleBuffer.CharacterDelay = characterDelay;
+            var waiter = new FastDelay()
+            {
+                Delay = characterDelay
+            };
 
             // Print columns
-            await ConsoleBuffer.DrawVerticalLine(maxRow, 0, totalHeight - 1, shortEnd: true);
+            await ConsoleBuffer.DrawVerticalLine(maxRow, 0, totalHeight - 1, shortEnd: true, waiter: waiter);
             for (int i = 0; i < columnTitles.Count; i++)
             {
                 int offsetY = maxColumn - columnTitles[i].Count;
                 int offsetX = maxRow + 1 /* left border */ + i * (cellSize + 1 /* right border */);
                 for (int j = 0; j < columnTitles[i].Count; j++)
                 {
-                    await ConsoleBuffer.WriteAt(offsetX, j + offsetY, columnTitles[i][j]);
+                    await ConsoleBuffer.WriteAt(offsetX, j + offsetY, columnTitles[i][j], waiter: waiter);
                 }
                 offsetX++;
-                await ConsoleBuffer.DrawVerticalLine(offsetX, 0, totalHeight - 1, shortEnd: true);
+                await ConsoleBuffer.DrawVerticalLine(offsetX, 0, totalHeight - 1, shortEnd: true, waiter: waiter);
             }
 
             // Print rows
-            await ConsoleBuffer.DrawHorizontalLine(0, maxColumn, totalWidth - 1, shortEnd: true);
+            await ConsoleBuffer.DrawHorizontalLine(0, maxColumn, totalWidth - 1, shortEnd: true, waiter: waiter);
             for (int i = 0; i < rowTitles.Count; i++)
             {
                 int offsetY = maxColumn + 1 /* top border */ + i * (cellSize + 1 /* bottom border */);
-                await ConsoleBuffer.WriteAt(maxRow - rowTitles[i].Length, offsetY, rowTitles[i]);
+                await ConsoleBuffer.WriteAt(maxRow - rowTitles[i].Length, offsetY, rowTitles[i], waiter: waiter);
                 offsetY++;
-                await ConsoleBuffer.DrawHorizontalLine(0, offsetY, totalWidth - 1, shortEnd: true);
+                await ConsoleBuffer.DrawHorizontalLine(0, offsetY, totalWidth - 1, shortEnd: true, waiter: waiter);
             }
         }
 
