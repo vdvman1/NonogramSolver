@@ -10,6 +10,7 @@ namespace NonogramSolver
     {
         private readonly List<int>[] rows, columns;
         private readonly int[] rowFilled, columnFilled;
+        private readonly (int start, int end)[] rowEndpoints, columnEndpoints;
         private readonly bool?[,] grid;
         private readonly int cellSize;
         private readonly ConsoleBuffer ConsoleBuffer;
@@ -22,12 +23,32 @@ namespace NonogramSolver
         private const char FilledChar = '█';
         private const char InvalidChar = '╳';
 
-        public Nonogram(int[][] rows, int[][] columns)
+        private static IEnumerable<int> FilterZeros(int[] segments)
         {
-            this.rows = rows.Select(Enumerable.ToList).ToArray();
+            bool yielded = false;
+
+            foreach (int segment in segments.Where(s => s > 0))
+            {
+                yield return segment;
+                yielded = true;
+            }
+
+            if (!yielded)
+            {
+                yield return 0;
+            }
+        }
+
+        public Nonogram(int[][] rawRows, int[][] rawColumns)
+        {
+            rows = rawRows.Select(FilterZeros).Select(Enumerable.ToList).ToArray();
             rowFilled = rows.Select(Enumerable.Sum).ToArray();
-            this.columns = columns.Select(Enumerable.ToList).ToArray();
+
+            columns = rawColumns.Select(FilterZeros).Select(Enumerable.ToList).ToArray();
             columnFilled = columns.Select(Enumerable.Sum).ToArray();
+
+            rowEndpoints = Enumerable.Repeat((0, columns.Length), rows.Length).ToArray();
+            columnEndpoints = Enumerable.Repeat((0, rows.Length), columns.Length).ToArray();
 
             grid = new bool?[rows.Length, columns.Length];
 
@@ -111,11 +132,70 @@ namespace NonogramSolver
             }
         }
 
+        private void AdjustRowEndpoints(int x, int y)
+        {
+            (int start, int end) = rowEndpoints[y];
+            if(x == start)
+            {
+                while(x < grid.GetLength(1) - 1 && grid[y, x] == false/*.HasValue*/)
+                {
+                    x++;
+                    if (x == end) break;
+                }
+                start = x;
+            }
+            else if(x == end - 1)
+            {
+                while(x > 0 && grid[y, x] == false/*.HasValue*/)
+                {
+                    x--;
+                    if (x == start) break;
+                }
+                end = x + 1;
+            }
+
+            rowEndpoints[y] = (start, end);
+            if(start == end && rowFilled[y] != 0)
+            {
+                throw new UnsolvablePuzzleException($"Row {y} unable to be satisfied");
+            }
+        }
+
+        private void AdjustColumnEndpoints(int x, int y)
+        {
+            (int start, int end) = columnEndpoints[x];
+            if (y == start)
+            {
+                while (y < grid.GetLength(0) - 1 && grid[y, x] == false/*.HasValue*/)
+                {
+                    y++;
+                    if (y == end) break;
+                }
+                start = y;
+            }
+            else if (y == end - 1)
+            {
+                while (y > 0 && grid[y, x] == false/*.HasValue*/)
+                {
+                    y--;
+                    if (y == start) break;
+                }
+                end = y + 1;
+            }
+
+            columnEndpoints[x] = (start, end);
+            if (start == end && columnFilled[y] != 0)
+            {
+                throw new UnsolvablePuzzleException($"Column {x} unable to be satisfied");
+            }
+        }
+
         private async Task FillCell(int x, int y, bool valid, IAsyncWaiter waiter)
         {
             if (grid[y, x] == null)
             {
                 grid[y, x] = valid;
+
                 int cellDrawSise = cellSize - 1;
                 int cellDiff = cellSize + 1 /* right border */;
                 int drawX = x * cellDiff + maxRow + 1 /* left border */;
@@ -127,16 +207,18 @@ namespace NonogramSolver
                     await FillCompletedRow(y, waiter);
                     await FillCompletedColumn(x, waiter);
                 }
+                AdjustRowEndpoints(x, y);
+                AdjustColumnEndpoints(x, y);
             }
-            else if(grid[y, x] != valid)
+            else if (grid[y, x] != valid)
             {
                 throw new UnsolvablePuzzleException($"Tried to set cell ({x}, {y}) to conflicting values");
             }
         }
 
-        private static int CalculateGap(List<int> segments, int size)
+        private static int CalculateGap(List<int> segments, (int start, int end) endpoints)
         {
-            int gap = size - segments[0];
+            int gap = endpoints.end - endpoints.start - segments[0];
             for (int i = 1; i < segments.Count; i++)
             {
                 gap -= 1 + segments[i];
@@ -151,23 +233,40 @@ namespace NonogramSolver
             for (int i = 0; i < gridHeight; i++)
             {
                 List<int> row = rows[i];
-                int gap = CalculateGap(row, gridWidth);
-
-                int j = 0;
-                foreach (int segmentLength in row)
+                if(row.Count == 1 && row[0] == 0)
                 {
-                    if (segmentLength < gap)
+                    await FillCompletedRow(i, waiter);
+                    row.Clear();
+                }
+                else if(row.Count > 0)
+                {
+                    (int start, int end) endpoints = rowEndpoints[i];
+                    int gap = CalculateGap(row, endpoints);
+
+                    int j = endpoints.start;
+                    foreach (int segmentLength in row)
                     {
-                        j += segmentLength + 1;
-                    }
-                    else
-                    {
-                        j += gap;
-                        for (int segI = gap; segI < segmentLength; segI++, j++)
+                        if (segmentLength < gap)
                         {
-                            await FillCell(j, i, true, waiter);
+                            j += segmentLength + 1;
                         }
-                        j++;
+                        else
+                        {
+                            j += gap;
+                            for (int segI = gap; segI < segmentLength; segI++, j++)
+                            {
+                                await FillCell(j, i, true, waiter);
+                                if(columnFilled[j] == 0)
+                                {
+                                    columns[j].Clear();
+                                }
+                            }
+                            j++;
+                        }
+                    }
+                    if(gap == 0)
+                    {
+                        row.Clear();
                     }
                 }
             }
@@ -175,23 +274,40 @@ namespace NonogramSolver
             for (int j = 0; j < gridWidth; j++)
             {
                 List<int> col = columns[j];
-                int gap = CalculateGap(col, gridHeight);
-
-                int i = 0;
-                foreach (int segmentLength in col)
+                if(col.Count == 1 && col[0] == 0)
                 {
-                    if(segmentLength < gap)
+                    await FillCompletedColumn(j, waiter);
+                    col.Clear();
+                }
+                else if (col.Count > 0)
+                {
+                    (int start, int end) endpoints = columnEndpoints[j];
+                    int gap = CalculateGap(col, endpoints);
+
+                    int i = endpoints.start;
+                    foreach (int segmentLength in col)
                     {
-                        i += segmentLength + 1;
-                    }
-                    else
-                    {
-                        i += gap;
-                        for (int segI = gap; segI < segmentLength; segI++, i++)
+                        if (segmentLength < gap)
                         {
-                            await FillCell(j, i, true, waiter);
+                            i += segmentLength + 1;
                         }
-                        i++;
+                        else
+                        {
+                            i += gap;
+                            for (int segI = gap; segI < segmentLength; segI++, i++)
+                            {
+                                await FillCell(j, i, true, waiter);
+                                if(rowFilled[i] == 0)
+                                {
+                                    rows[i].Clear();
+                                }
+                            }
+                            i++;
+                        }
+                    }
+                    if(gap == 0)
+                    {
+                        col.Clear();
                     }
                 }
             }
