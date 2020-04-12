@@ -94,11 +94,17 @@ namespace NonogramSolver
                 Delay = 10
             };
 
-            using (var nonogram = new Nonogram(rows, columns))
+            try
             {
+                using var nonogram = new Nonogram(rows, columns);
+
                 await nonogram.Draw(gridCharacterDelay);
                 Console.ReadKey();
                 await nonogram.Solve(stepWaiter);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
             }
             Console.ReadKey();
         }
