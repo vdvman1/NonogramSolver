@@ -89,10 +89,16 @@ namespace NonogramSolver
             // TODO: load from args or interactive console menu
             (int[][] columns, int[][] rows) = test2;
             int gridCharacterDelay = 1;
+            IAsyncWaiter stepWaiter = new FastDelay()
+            {
+                Delay = 10
+            };
 
             using (var nonogram = new Nonogram(rows, columns))
             {
                 await nonogram.Draw(gridCharacterDelay);
+                Console.ReadKey();
+                await nonogram.Solve(stepWaiter);
             }
             Console.ReadKey();
         }

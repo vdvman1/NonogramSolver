@@ -18,6 +18,8 @@ namespace NonogramSolver
         private readonly int maxColumn;
         private readonly int totalWidth;
         private readonly int totalHeight;
+        private const char FilledChar = '█';
+        private const char InvalidChar = '╳';
 
         public Nonogram(int[][] rows, int[][] columns)
         {
@@ -67,6 +69,80 @@ namespace NonogramSolver
                 offsetY += cellSize;
                 await ConsoleBuffer.DrawHorizontalLine(0, offsetY, totalWidth - 1, shortEnd: true, waiter: waiter);
             }
+        }
+
+        private Task FillCell(int x, int y, char c, IAsyncWaiter waiter)
+        {
+            int cellDrawSise = cellSize - 1;
+            int cellDiff = cellSize + 1 /* right border */;
+            x = x * cellDiff + maxRow + 1 /* left border */;
+            y = y * cellDiff + maxColumn + 1 /* top border */;
+            return ConsoleBuffer.Fill(x, y, x + cellDrawSise, y + cellDrawSise, c, waiter);
+        }
+
+        private static int CalculateGap(int[] segments, int size)
+        {
+            int gap = size - segments[0];
+            for (int i = 1; i < segments.Length; i++)
+            {
+                gap -= 1 + segments[i];
+            }
+            return gap;
+        }
+
+        public async Task Solve(IAsyncWaiter waiter)
+        {
+            int gridHeight = grid.GetLength(0);
+            int gridWidth = grid.GetLength(1);
+            for (int i = 0; i < gridHeight; i++)
+            {
+                int[] row = rows[i];
+                int gap = CalculateGap(row, gridWidth);
+
+                int j = 0;
+                foreach (int segmentLength in row)
+                {
+                    if (segmentLength < gap)
+                    {
+                        j += segmentLength + 1;
+                    }
+                    else
+                    {
+                        j += gap;
+                        for (int segI = gap; segI < segmentLength; segI++, j++)
+                        {
+                            await FillCell(j, i, FilledChar, waiter);
+                        }
+                        j++;
+                    }
+                }
+            }
+
+            for (int j = 0; j < gridWidth; j++)
+            {
+                int[] col = columns[j];
+                int gap = CalculateGap(col, gridHeight);
+
+                int i = 0;
+                foreach (int segmentLength in col)
+                {
+                    if(segmentLength < gap)
+                    {
+                        i += segmentLength + 1;
+                    }
+                    else
+                    {
+                        i += gap;
+                        for (int segI = gap; segI < segmentLength; segI++, i++)
+                        {
+                            await FillCell(j, i, FilledChar, waiter);
+                        }
+                        i++;
+                    }
+                }
+            }
+
+            await waiter.WaitAsync();
         }
 
         public void Dispose()

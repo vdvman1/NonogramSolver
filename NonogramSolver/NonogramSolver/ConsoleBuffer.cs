@@ -477,6 +477,29 @@ namespace NonogramSolver
             }
         }
 
+        public async Task Fill(int x1, int y1, int x2, int y2, char c, IAsyncWaiter waiter = null)
+        {
+            if(x2 < x1)
+            {
+                (x1, x2) = (x2, x1);
+            }
+            if(y2 < y1)
+            {
+                (y1, y2) = (y2, y1);
+            }
+
+            CheckValid(x1, y1);
+            CheckValid(x2, y2);
+
+            for (int y = y1; y <= y2; y++)
+            {
+                for (int x = x1; x <= x2; x++)
+                {
+                    await UncheckedWriteAt(x, y, c, waiter);
+                }
+            }
+        }
+
         /// <summary>
         /// Force the buffer to produce an output
         /// </summary>
