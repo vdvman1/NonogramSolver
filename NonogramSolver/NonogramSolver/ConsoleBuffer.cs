@@ -121,11 +121,14 @@ namespace NonogramSolver
 
         private Task UncheckedWriteAt(int x, int y, char c, IAsyncWaiter waiter)
         {
-            buffer[y * Width + x] = c;
-            if (IsScreen)
+            if (this[x, y] != c)
             {
-                Console.SetCursorPosition(x, y);
-                Console.Write(c);
+                buffer[y * Width + x] = c;
+                if (IsScreen)
+                {
+                    Console.SetCursorPosition(x, y);
+                    Console.Write(c);
+                }
             }
             return !IsScreen || waiter == null ? Task.CompletedTask : waiter.WaitAsync();
         }
