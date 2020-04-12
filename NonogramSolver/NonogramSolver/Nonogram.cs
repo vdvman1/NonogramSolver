@@ -130,7 +130,7 @@ namespace NonogramSolver
             }
             else if(grid[y, x] != valid)
             {
-                throw new InvalidOperationException($"Tried to set cell ({x}, {y}) to conflicting values");
+                throw new UnsolvablePuzzleException($"Tried to set cell ({x}, {y}) to conflicting values");
             }
         }
 
@@ -202,6 +202,11 @@ namespace NonogramSolver
         public void Dispose()
         {
             ConsoleBuffer.Dispose();
+        }
+
+        public class UnsolvablePuzzleException : Exception
+        {
+            public UnsolvablePuzzleException(string message) : base(message) { }
         }
     }
 }
