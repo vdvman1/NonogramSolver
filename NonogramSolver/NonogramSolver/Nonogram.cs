@@ -8,7 +8,8 @@ namespace NonogramSolver
 {
     class Nonogram : IDisposable
     {
-        private readonly int[][] rows, columns;
+        private readonly List<int>[] rows, columns;
+        private readonly int[] rowFilled, columnFilled;
         private readonly bool?[,] grid;
         private readonly int cellSize;
         private readonly ConsoleBuffer ConsoleBuffer;
@@ -23,8 +24,11 @@ namespace NonogramSolver
 
         public Nonogram(int[][] rows, int[][] columns)
         {
-            this.rows = rows;
-            this.columns = columns;
+            this.rows = rows.Select(Enumerable.ToList).ToArray();
+            rowFilled = rows.Select(Enumerable.Sum).ToArray();
+            this.columns = columns.Select(Enumerable.ToList).ToArray();
+            columnFilled = columns.Select(Enumerable.Sum).ToArray();
+
             grid = new bool?[rows.Length, columns.Length];
 
             columnTitles = columns.Select(c => c.Select(i => i.ToString()).ToList()).ToList();
@@ -71,24 +75,60 @@ namespace NonogramSolver
             }
         }
 
-        private Task FillCell(int x, int y, bool valid, IAsyncWaiter waiter)
+        private async Task FillCell(int x, int y, bool valid, IAsyncWaiter waiter)
         {
-            if (grid[y, x] != valid)
+            if (grid[y, x] == null)
             {
                 grid[y, x] = valid;
                 int cellDrawSise = cellSize - 1;
                 int cellDiff = cellSize + 1 /* right border */;
-                x = x * cellDiff + maxRow + 1 /* left border */;
-                y = y * cellDiff + maxColumn + 1 /* top border */;
-                return ConsoleBuffer.Fill(x, y, x + cellDrawSise, y + cellDrawSise, valid ? FilledChar : InvalidChar, waiter);
+                int drawX = x * cellDiff + maxRow + 1 /* left border */;
+                int drawY = y * cellDiff + maxColumn + 1 /* top border */;
+                await ConsoleBuffer.Fill(drawX, drawY, drawX + cellDrawSise, drawY + cellDrawSise, valid ? FilledChar : InvalidChar, waiter);
+
+                if (valid)
+                {
+                    if (rowFilled[y] > 0)
+                    {
+                        rowFilled[y]--;
+                        if (rowFilled[y] == 0)
+                        {
+                            for (int i = 0; i < grid.GetLength(1); i++)
+                            {
+                                if (grid[y, i] == null)
+                                {
+                                    await FillCell(i, y, false, waiter);
+                                }
+                            }
+                        }
+                    }
+
+                    if (columnFilled[x] > 0)
+                    {
+                        columnFilled[x]--;
+                        if (columnFilled[x] == 0)
+                        {
+                            for (int i = 0; i < grid.GetLength(0); i++)
+                            {
+                                if (grid[i, x] == null)
+                                {
+                                    await FillCell(x, i, false, waiter);
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            return Task.CompletedTask;
+            else if(grid[y, x] != valid)
+            {
+                throw new InvalidOperationException($"Tried to set cell ({x}, {y}) to conflicting values");
+            }
         }
 
-        private static int CalculateGap(int[] segments, int size)
+        private static int CalculateGap(List<int> segments, int size)
         {
             int gap = size - segments[0];
-            for (int i = 1; i < segments.Length; i++)
+            for (int i = 1; i < segments.Count; i++)
             {
                 gap -= 1 + segments[i];
             }
@@ -101,7 +141,7 @@ namespace NonogramSolver
             int gridWidth = grid.GetLength(1);
             for (int i = 0; i < gridHeight; i++)
             {
-                int[] row = rows[i];
+                List<int> row = rows[i];
                 int gap = CalculateGap(row, gridWidth);
 
                 int j = 0;
@@ -125,7 +165,7 @@ namespace NonogramSolver
 
             for (int j = 0; j < gridWidth; j++)
             {
-                int[] col = columns[j];
+                List<int> col = columns[j];
                 int gap = CalculateGap(col, gridHeight);
 
                 int i = 0;
