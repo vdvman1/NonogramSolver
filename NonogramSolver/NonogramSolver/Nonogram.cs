@@ -26,7 +26,7 @@ namespace NonogramSolver
             grid = new bool[columns.Length, rows.Length];
 
             columnTitles = columns.Select(c => c.Select(i => i.ToString()).ToList()).ToList();
-            rowTitles = rows.Select(r => string.Join(",", r)).ToList();
+            rowTitles = rows.Select(r => string.Join(" ", r)).ToList();
 
             cellSize = columnTitles.Max(c => c.Max(i => i.Length));
             maxRow = rowTitles.Max(r => r.Length);
