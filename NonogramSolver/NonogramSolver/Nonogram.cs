@@ -9,7 +9,7 @@ namespace NonogramSolver
     class Nonogram : IDisposable
     {
         private readonly int[][] rows, columns;
-        private readonly bool[,] grid;
+        private readonly bool?[,] grid;
         private readonly int cellSize;
         private readonly ConsoleBuffer ConsoleBuffer;
         private readonly List<List<string>> columnTitles;
@@ -25,7 +25,7 @@ namespace NonogramSolver
         {
             this.rows = rows;
             this.columns = columns;
-            grid = new bool[columns.Length, rows.Length];
+            grid = new bool?[rows.Length, columns.Length];
 
             columnTitles = columns.Select(c => c.Select(i => i.ToString()).ToList()).ToList();
             rowTitles = rows.Select(r => string.Join(" ", r)).ToList();
@@ -71,13 +71,18 @@ namespace NonogramSolver
             }
         }
 
-        private Task FillCell(int x, int y, char c, IAsyncWaiter waiter)
+        private Task FillCell(int x, int y, bool valid, IAsyncWaiter waiter)
         {
-            int cellDrawSise = cellSize - 1;
-            int cellDiff = cellSize + 1 /* right border */;
-            x = x * cellDiff + maxRow + 1 /* left border */;
-            y = y * cellDiff + maxColumn + 1 /* top border */;
-            return ConsoleBuffer.Fill(x, y, x + cellDrawSise, y + cellDrawSise, c, waiter);
+            if (grid[y, x] != valid)
+            {
+                grid[y, x] = valid;
+                int cellDrawSise = cellSize - 1;
+                int cellDiff = cellSize + 1 /* right border */;
+                x = x * cellDiff + maxRow + 1 /* left border */;
+                y = y * cellDiff + maxColumn + 1 /* top border */;
+                return ConsoleBuffer.Fill(x, y, x + cellDrawSise, y + cellDrawSise, valid ? FilledChar : InvalidChar, waiter);
+            }
+            return Task.CompletedTask;
         }
 
         private static int CalculateGap(int[] segments, int size)
@@ -111,7 +116,7 @@ namespace NonogramSolver
                         j += gap;
                         for (int segI = gap; segI < segmentLength; segI++, j++)
                         {
-                            await FillCell(j, i, FilledChar, waiter);
+                            await FillCell(j, i, true, waiter);
                         }
                         j++;
                     }
@@ -135,7 +140,7 @@ namespace NonogramSolver
                         i += gap;
                         for (int segI = gap; segI < segmentLength; segI++, i++)
                         {
-                            await FillCell(j, i, FilledChar, waiter);
+                            await FillCell(j, i, true, waiter);
                         }
                         i++;
                     }
