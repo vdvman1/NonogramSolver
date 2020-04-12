@@ -75,6 +75,42 @@ namespace NonogramSolver
             }
         }
 
+        private async Task FillCompletedRow(int y, IAsyncWaiter waiter)
+        {
+            if (rowFilled[y] > 0)
+            {
+                rowFilled[y]--;
+                if (rowFilled[y] == 0)
+                {
+                    for (int i = 0; i < grid.GetLength(1); i++)
+                    {
+                        if (grid[y, i] == null)
+                        {
+                            await FillCell(i, y, false, waiter);
+                        }
+                    }
+                }
+            }
+        }
+
+        private async Task FillCompletedColumn(int x, IAsyncWaiter waiter)
+        {
+            if (columnFilled[x] > 0)
+            {
+                columnFilled[x]--;
+                if (columnFilled[x] == 0)
+                {
+                    for (int i = 0; i < grid.GetLength(0); i++)
+                    {
+                        if (grid[i, x] == null)
+                        {
+                            await FillCell(x, i, false, waiter);
+                        }
+                    }
+                }
+            }
+        }
+
         private async Task FillCell(int x, int y, bool valid, IAsyncWaiter waiter)
         {
             if (grid[y, x] == null)
@@ -88,35 +124,8 @@ namespace NonogramSolver
 
                 if (valid)
                 {
-                    if (rowFilled[y] > 0)
-                    {
-                        rowFilled[y]--;
-                        if (rowFilled[y] == 0)
-                        {
-                            for (int i = 0; i < grid.GetLength(1); i++)
-                            {
-                                if (grid[y, i] == null)
-                                {
-                                    await FillCell(i, y, false, waiter);
-                                }
-                            }
-                        }
-                    }
-
-                    if (columnFilled[x] > 0)
-                    {
-                        columnFilled[x]--;
-                        if (columnFilled[x] == 0)
-                        {
-                            for (int i = 0; i < grid.GetLength(0); i++)
-                            {
-                                if (grid[i, x] == null)
-                                {
-                                    await FillCell(x, i, false, waiter);
-                                }
-                            }
-                        }
-                    }
+                    await FillCompletedRow(y, waiter);
+                    await FillCompletedColumn(x, waiter);
                 }
             }
             else if(grid[y, x] != valid)
